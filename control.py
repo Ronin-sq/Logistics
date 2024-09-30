@@ -19,9 +19,9 @@ class PIDController:
         self.error_previous = error
         return output
     
-class Motor:
-    def __init__(self, index):
-        self.index = index
+class EncoderMotor:
+    def __init__(self):
+        self.index = 3
         self.uart = Uart(port="dev",baudrate=9200)
         
     def abs(self,data):

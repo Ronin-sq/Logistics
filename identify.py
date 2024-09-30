@@ -6,22 +6,21 @@ from PIL import Image, ImageDraw, ImageFont
 
 class VideoCapture:
     def __init__(self,index):
-        # self.frame = None
+        self.frame = None
         self.video = cv2.VideoCapture(index)
         self.video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         if not self.video.isOpened():
             print("无法打开摄像头")
             exit()
             
-    
     def get_frame(self):
         while True:
-            ret, frame = self.video.read()
+            ret, self.frame = self.video.read()
             if not ret:
                 print("无法接收帧 (stream end?)")
-            break
-        return frame
-        
+                break
+            
+            
     def QR_code(self):
         qr_coder = cv2.QRCodeDetector()
         while True:
@@ -72,8 +71,12 @@ class VideoCapture:
                 else:
                     print("未识别到圆")
                     continue
-                
-                
+    def cv_imshow(self):
+        while True:
+            cv2.imshow("frame", self.frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):  # 按 'q' 键关闭窗口
+                break
+
     def release(self):
         cv2.release()
         cv2.destroyAllWindows()
@@ -119,4 +122,24 @@ def show_mission(list):
     
     
 if __name__ == "__main__":
-    show_mission([1,2,3])
+    # # show_mission([1,2,3])
+    # video = VideoCapture(0)
+    # video.get_frame()
+    # video.cv_imshow()
+    # video.release()
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+    if not cap.isOpened():
+        print("无法打开摄像头")
+        exit()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("无法接收帧 (stream end?)")
+            break
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
