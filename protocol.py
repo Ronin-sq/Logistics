@@ -35,7 +35,7 @@ def float_to_hex(f):
     unpacked = struct.unpack('<I', packed)[0]
     return unpacked
 
-def protocol(index,motor_list,rpm_list):
+def protocol(index,motor_list,rpm_list):    # motor_list 为控制电机序号，rpm_list 为对应电机的转速，example：motor_list=[1,2,3,4],rpm_list=[-1,2,2,2]
     sub_command = 0x01
     motor = [0x01,0x02,0x03,0x04]
     motor1 = 0x01
@@ -52,7 +52,7 @@ def protocol(index,motor_list,rpm_list):
         data_len = 6
         speed = float_to_hex(rpm_list[0])
         function_data = struct.pack("BBB",function_frame,data_len,sub_command)
-        data = struct.pack("B",motor[motor_list[0]])
+        data = struct.pack("B",motor[motor_list[0]-1])
         data += struct.pack("<I", speed)
         data = function_data+data
         print(data)
