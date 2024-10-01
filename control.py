@@ -20,20 +20,40 @@ class PIDController:
         self.error_previous = error
         return output
     
-class EncoderMotor:
-    def __init__(self):
-        self.index = 3
-        self.uart = Uart(port="dev",baudrate=9200)
+class Motor:           # 编码电机类对象
+    def __init__(self,port,baudrate):
+        self.uart = Uart(port,baudrate)
         
+                
     def abs(self,data):
         if data<0:
             data = -data
         return data
+    def control_stepping(self):
+        print()
     
-    def control_motor(self, pwm ):
-        pwm = self.min_max(pwm)
-        self.uart.send_data(pwm)
-        print("发送成功")
+    def control_rudder(self,index,angle):
+        send_data = protocol.rudder_move(index,angle)
+        self.uart.send_data(send_data)
+        print(f"控制舵机成功：{send_data}")
+        
+        
+    def control_motor(self,index,motor_list,rpm_list):
+        send_data = protocol.motor_move(index,motor_list,rpm_list)
+        self.uart.send_data(send_data)
+        print(f"发送成功:{send_data}")
+        
+        
+    def flag_receive(self):
+        flag = self.uart.receive_data()
+        return flag
+    
+    
+    def motor_stop(self):
+        send_data = protocol.motor_close()
+        self.uart.send_data(send_data)
+        print("电机停转")
+        
         
         
     def min_max(self, pwm):
