@@ -35,7 +35,7 @@ def float_to_hex(f):
     unpacked = struct.unpack('<I', packed)[0]
     return unpacked
 
-def protocol(index,motor_list,rpm_list):    # motor_list 为控制电机序号，rpm_list 为对应电机的转速，example：motor_list=[1,2,3,4],rpm_list=[-1,2,2,2]
+def motor_move(index,motor_list,rpm_list):    # motor_list 为控制电机序号，rpm_list 为对应电机的转速，example：motor_list=[1,2,3,4],rpm_list=[-1,2,2,2]
     sub_command = 0x01
     motor = [0x01,0x02,0x03,0x04]
     motor1 = 0x01
@@ -126,6 +126,43 @@ def protocol(index,motor_list,rpm_list):    # motor_list 为控制电机序号�
         print(send_data)
         return send_data
 
+def rudder_move(index,angle):
+    time = 1000
+    framer_header1 = 0xAA
+    framer_header2 = 0x55
+    sub_command = 0x03
+    function_frame = 0x04
+    data_len = 6
+    pwm = int(500+(angle/180)*2000)
+    framer = struct.pack("BB",framer_header1,framer_header2)
+    function = struct.pack("BBB",function_frame,data_len,sub_command)
+    data = struct.pack("HB",time,index)
+    data += struct.pack("H",pwm)
+    print(data)
+    data = function+data
+    checksum=checksum_crc8_maxim(data)
+    print(f'{checksum:02X}')  # 期望输出：FB
+    checksum_data = struct.pack("B",checksum)
+    send_data = framer+data+checksum_data
+    print(send_data)
+    return send_data
+    
+def motor_close():
+    framer_header1 = 0xAA
+    framer_header2 = 0x55
+    function_frame = 0x03
+    data_len = 0x02
+    sub_command = 0x03
+    framer = struct.pack("BB",framer_header1,framer_header2)
+    motor_mask = 0x0F
+    data = struct.pack("BBBB",function_frame,data_len,sub_command,motor_mask)
+    checksum = checksum_crc8_maxim(data)
+    print(f'{checksum:02X}')  # 期望输出：FB
+    checksum_data = struct.pack("B",checksum)
+    send_data = framer+data+checksum_data
+    print(send_data)
+    return send_data
+
     
 if __name__ == "__main__":
     # print(float_to_hex(-1))
@@ -142,6 +179,6 @@ if __name__ == "__main__":
     # data += struct.pack("<I", rpm_data1)
     # print(' '.join(f'{byte:02x}' for byte in data))
     # print(data)
-    data = protocol(2,[1,2],[-1.0,2.0])
+    # 
+    data =rudder_move(1,90)
     print(' '.join(f'{byte:02x}' for byte in data))
-    print(data)
