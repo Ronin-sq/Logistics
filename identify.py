@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import constants
 from PIL import Image, ImageDraw, ImageFont 
-
+from skimage import data,draw,color,transform,feature
 class VideoCapture:
     def __init__(self,index):
         self.frame = None
@@ -71,21 +71,24 @@ class VideoCapture:
             #开闭运算函数，滤除噪点，使得集合区域更加平滑
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel)
             opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
-            closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
-            circles = cv2.HoughCircles(closed, cv2.HOUGH_GRADIENT, 1, 30, param1=100, param2=20, minRadius=5, maxRadius=150)
-            if circles is not None:  # 如果识别出圆
-                for circle in circles[0]:
-                    #  获取圆的坐标与半径
-                    x = int(circle[0])
-                    y = int(circle[1])
-                    r = int(circle[2])
-                    cv2.circle(frame, (x, y), r, (0, 255, 0), 3)  # 标记圆
-                    cv2.circle(frame, (x, y), 6, (255, 255, 0), -1)  # 标记圆心
-                    print(f"x:{x},y:{y}")
-                    return [x,y,r]
-            else:
-                print("未识别到圆")
-                # continue
+
+
+
+            contours, hierarchy = cv2.findContours(opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            contours=sorted(contours,key = cv2.contourArea, reverse=True)
+            if contours:
+
+                M = cv2.moments(contours[0])
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                # draw the contour and center of the shape on the image
+                cv2.drawContours(frame, [contours[0]], -1, (0, 255, 0), 2)
+                cv2.circle(frame, (cX, cY), 1, (255, 255, 255), -1)
+                print("x",cX,'y',cY)
+
+
+
+
     def cv_imshow(self):
         cv2.imshow("frame", self.frame)
 
@@ -138,12 +141,15 @@ if __name__ == "__main__":
     # show_mission([1,2,3])
     video = VideoCapture(0)
     while True:
-        video.find_material([1,2,3])
+
+        video.find_material(2)
         video.cv_imshow()
 
         #video.cv_imshow()
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+
     video.release()
     # cap = cv2.VideoCapture(0)
     # #cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
