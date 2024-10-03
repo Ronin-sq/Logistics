@@ -22,7 +22,7 @@ class PIDController:
     
 class Motor:           # 编码电机类对象
     def __init__(self,port,baudrate):
-        self.uart = Uart(port,baudrate)
+        self.uart = Uart(port=port,baudrate=baudrate,timeout=5)
         
                 
     def abs(self,data):
