@@ -16,7 +16,7 @@ class Uart:
     
     def send_data(self, data):
         if data:
-            send_data = bytes(data, encoding = 'UTF-8')
+            # send_data = bytes(data, encoding = 'UTF-8')
             self.uart.write(send_data)
             print(f"send data:{send_data} successful!")
         else:
