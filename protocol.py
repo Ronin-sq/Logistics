@@ -38,10 +38,10 @@ def float_to_hex(f):
 def motor_move(index,motor_list,rpm_list):    # motor_list 为控制电机序号，rpm_list 为对应电机的转速，example：motor_list=[1,2,3,4],rpm_list=[-1,2,2,2]
     sub_command = 0x01
     motor = [0x01,0x02,0x03,0x04]
-    motor1 = 0x01
-    motor2 = 0x02
-    motor3 = 0x03
-    motor4 = 0x04
+    # motor1 = 0x01
+    # motor2 = 0x02
+    # motor3 = 0x03
+    # motor4 = 0x04
     framer_header1 = 0xAA
     framer_header2 = 0x55
     function_frame = 0x03
