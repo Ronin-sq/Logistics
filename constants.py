@@ -7,6 +7,6 @@ color_config = {
     2:[np.array([35,43,46]),np.array([77,255,255])],    # green
     3:[np.array([100,43,46]),np.array([124,255,255])]  # blue
 }
-port_1 = "dev/ttyACM0"
+port_1 = "/dev/ttyACM0"
 baudrate_1=100000
 print(color_config[1])

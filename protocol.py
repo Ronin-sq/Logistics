@@ -180,5 +180,12 @@ if __name__ == "__main__":
     # print(' '.join(f'{byte:02x}' for byte in data))
     # print(data)
     # 
-    data =rudder_move(1,90)
+    import time
+    import serial
+    uart = serial.Serial("/dev/ttyACM0",100000,timeout=5)
+    data1 = motor_move(1,[1],[1])
+    uart.write(data1)
+    time.sleep(1.0)
+    data =motor_close()
+    uart.write(data)
     print(' '.join(f'{byte:02x}' for byte in data))
