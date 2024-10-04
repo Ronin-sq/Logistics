@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import constants
 from PIL import Image, ImageDraw, ImageFont 
-from skimage import data,draw,color,transform,feature
+# from skimage import data,draw,color,transform,feature
 class VideoCapture:
     def __init__(self,index):
         self.frame = None
@@ -85,6 +85,34 @@ class VideoCapture:
                 cv2.drawContours(frame, [contours[0]], -1, (0, 255, 0), 2)
                 cv2.circle(frame, (cX, cY), 1, (255, 255, 255), -1)
                 print("x",cX,'y',cY)
+                
+# 增加圆环检测
+    def detect_circle(self,list):
+        img = self.get_frame()
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv,constants.color_config[list][0],constants.color_config[list][1])
+        Gaussian_mask = cv2.GaussianBlur(mask,(3,3),1)
+        cv2.imshow("mask",Gaussian_mask)
+        circles = cv2.HoughCircles(Gaussian_mask,cv2.HOUGH_GRADIENT,1,20,param1=100,param2=30,minRadius=50,maxRadius=500)
+        print(circles)
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            max_r = []
+            max_point = []
+            for i in circles[0, :]:
+                if len(max_r) == 0:
+                    max_r.append(i[2])
+                    max_point.append((i[0],i[1]))
+                else:
+                    if i[2]>max_r[0]:
+                        max_r.pop()
+                        max_r.append(i[2])
+                        max_point.pop()
+                        max_point.append((i[0],i[1]))
+        print(f'{max_point}')
+        print(max_r)
+        cv2.circle(img,max_point[0],max_r[0],(0, 0, 0), 5)
+        return max_point
 
 
 
