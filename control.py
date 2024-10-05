@@ -2,6 +2,7 @@ import time
 from constants import pwm_max,pwm_min
 from uart import Uart
 import protocol
+import protocol1
 class PIDController:
     def __init__(self, kp, ki, kd):
         self.kp = kp
@@ -22,7 +23,7 @@ class PIDController:
     
 class Motor:           # 编码电机类对象
     def __init__(self,port,baudrate):
-        self.uart = Uart(port=port,baudrate=baudrate,timeout=5)
+        self.motor = protocol1.Board()
         
                 
     def abs(self,data):
@@ -33,15 +34,17 @@ class Motor:           # 编码电机类对象
         print()
     
     def control_rudder(self,index,angle):
-        send_data = protocol.rudder_move(index,angle)
-        self.uart.send_data(send_data)
-        print(f"控制舵机成功：{send_data}")
+        # send_data = protocol.rudder_move(index,angle)
+        position = 500+(angle/360)*2000
+        self.motor.pwm_servo_set_position(0.1,[[index,position]])
+        print(f"控制舵机成功：{position}")
         
         
-    def control_motor(self,index,motor_list,rpm_list):
-        send_data = protocol.motor_move(index,motor_list,rpm_list)
-        self.uart.send_data(send_data)
-        print(f"发送成功:{send_data}")
+    def control_motor(self,motor_list,rpm_list):
+        # send_data = protocol.motor_move(index,motor_list,rpm_list)
+        
+        self.motor.set_motor_speed([motor_list[0],rpm_list[0]],[motor_list[1],rpm_list[1],[motor_list[2],rpm_list[2]],[motor_list[3],rpm_list[3]]])
+        print(f"发送成功")
         
         
     def flag_receive(self):
@@ -50,8 +53,8 @@ class Motor:           # 编码电机类对象
     
     
     def motor_stop(self):
-        send_data = protocol.motor_close()
-        self.uart.send_data(send_data)
+
+        self.motor.set_motor_speed([[1,0],[2,0],[3,0],[4,0]])
         print("电机停转")
         
         
