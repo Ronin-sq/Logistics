@@ -17,10 +17,18 @@ class Uart:
     def send_data(self, data):
         if data:
             # send_data = bytes(data, encoding = 'UTF-8')
-            self.uart.write(send_data)
-            print(f"send data:{send_data} successful!")
+            self.uart.write(data)
+            print(f"send data:{data} successful!")
         else:
             print("receive data failed")
             
     def close(self):
         self.uart.close()
+        
+if __name__ == "__main__":
+    import struct
+    byte = struct.pack("BBBBBBB",0xAA,0x55,0x07,0x00,0x01,0x00,0x07)
+    # print(byte[4])
+    if byte[4] == 0x01:
+        print(f"flag = {byte[4]}")
+    
