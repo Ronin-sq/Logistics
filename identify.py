@@ -17,7 +17,7 @@ class VideoCapture:
         self.mapx2, self.mapy2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, None, self.p, (self.width, self.height), cv2.CV_32F)
 
         self.frame = None
-        self.video = cv2.VideoCapture(index)
+        # self.video = cv2.VideoCapture(index)
         self.video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         if not self.video.isOpened():
             print("无法打开摄像头")
@@ -34,18 +34,18 @@ class VideoCapture:
             
     def QR_code(self):
         qr_coder = cv2.QRCodeDetector()
+        # while True:
         if 1:
         #try:
-            frame = self.frame
+            frame = self.get_frame()
             # qr检测并解码
             codeinfo, points, straight_qrcode = qr_coder.detectAndDecode(frame)
-
-
         # 绘制qr的检测结果
             if codeinfo !='' :
                 print(points)
                 # 打印解码结果
                 print("qrcode :", codeinfo)
+                # self.cv_imshow(frame)
                 return codeinfo
         #except:
             #print("检测二维码失败")
@@ -133,13 +133,20 @@ def get_text(list):
         2:"2",
         3:"3"
     }
+    count = 0
     for i in list:
-        text = config[list[i-1]]
+        text = config[i]
         texts = texts+text+"  "
+        count +=1
+        while count == 3 :
+            texts = texts +"\n"
+            break
+    print(texts)
     return texts
     
     
 def show_mission(list):
+    # list = str_int(list=list)
     img = cv2.imread("white.jpg")
     pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     # 创建一个可以在图像上绘图的对象
@@ -148,7 +155,7 @@ def show_mission(list):
     font = ImageFont.truetype("simkai.ttf", 400, encoding="unic")
     # 指定文本位置和颜色
     text = get_text(list)
-    position = (0, 350)
+    position = (50, 250)
     text_color = (0, 0, 0)
     # 在图像上绘制文本
     draw.text(position, text, fill=text_color, font=font)
@@ -162,23 +169,37 @@ def show_mission(list):
                 break
     cv2.destroyAllWindows()
     
+def str_int(list):
+        li = list.split("+")
+        data = []
+        print(len(li))
+        for i in range(len(li)):
+            temporary = int(li[i])
+            data1= temporary//100
+            data.append(data1)
+            data2 = (temporary-data1*100)//10
+            data.append(data2)
+            data3 = temporary-data1*100-data2*10
+            data.append(data3)
+            print(data)
+        return data
     
     
     
 if __name__ == "__main__":
     # show_mission([1,2,3])
-    video = VideoCapture(0)
-    while True:
+    # video = VideoCapture(0)
+    # while True:
 
-        video.find_material(2)
-        video.cv_imshow()
+    #     list = video.QR_code()
+    #     video.cv_imshow()
 
-        #video.cv_imshow()
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    #     #video.cv_imshow()
+    #     if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         break
 
 
-    video.release()
+    # video.release()
     # cap = cv2.VideoCapture(0)
     # #cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     # if not cap.isOpened():
@@ -195,3 +216,21 @@ if __name__ == "__main__":
     #
     # cap.release()
     # cv2.destroyAllWindows()
+    list = "123+321"
+    def str_int(list):
+        li = list.split("+")
+        data = []
+        print(len(li))
+        for i in range(len(li)):
+            temporary = int(li[i])
+            data1= temporary//100
+            data.append(data1)
+            data2 = (temporary-data1*100)//10
+            data.append(data2)
+            data3 = temporary-data1*100-data2*10
+            data.append(data3)
+            print(data)
+        return data
+    # data = str_int(list=list)
+    # list = get_text(data)
+    show_mission(list)
