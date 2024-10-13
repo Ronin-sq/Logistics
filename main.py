@@ -47,7 +47,7 @@ while True:
         print(type(list))
         break
 identify_list = list  # 复制序列信息，防止线程交叉
-thread = threading.Thread(target=show_mission, args=(list))  # 启动一个线程 展示任务信息
+thread = threading.Thread(target=show_mission, args=(list, motor))  # 启动一个线程 展示任务信息
 thread.start()
 vel_msg = {"linear_x": 1.0, "linear_y": 0.0, "angular_z": 0.0}
 motor.cmd_vel_callback(vel_msg)

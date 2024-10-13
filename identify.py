@@ -145,7 +145,7 @@ def get_text(list):
     return texts
     
     
-def show_mission(list):
+def show_mission(list,motor):
     # list = str_int(list=list)
     img = cv2.imread("white.jpg")
     pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -165,10 +165,14 @@ def show_mission(list):
     cv2.imwrite('image_with_text.jpg', img_with_text)
     cv2.imshow("Mission", img_with_text)
     while True:
-            if cv2.waitKey(1) & 0xFF == ord('q'):  # 按 'q' 键关闭窗口
-                break
+        if cv2.waitKey(1) & 0xFF == ord('q'):  # 按 'q' 键关闭窗口
+            break
+    vel_msg = {"linear_x": 0.0, "linear_y": 0.0, "angular_z": 0.0}
+    motor.cmd_vel_callback(vel_msg)    
     cv2.destroyAllWindows()
-    
+    print("停止整个程序")
+    exit()
+        
 def str_int(list):
         li = list.split("+")
         data = []
