@@ -19,7 +19,7 @@ motor = Motor(ser=ser)  # 电机初始化
 
 # 初始化两个相机对象
 cap1 = VideoCapture(0)  # 识别二维码
-# cap2 = VideoCapture(1)   # 识别圆
+cap2 = VideoCapture(1)   # 识别圆
 while True:
     if ser.in_waiting >= 7:
         data = ser.read(7)
@@ -31,9 +31,9 @@ while True:
         else:
             print("读取的数据不足7字节,尝试重新读取")
     # 接收到启动消息开始运动，接收侧还需要再设计
-vel_msg = {"linear_x": 0.0, "linear_y": 0.5, "angular_z": 0.0}
+vel_msg = {"linear_x": 0.1, "linear_y": 0.0, "angular_z": 0.0}
 motor.cmd_vel_callback(vel_msg)
-time.sleep(1.0)
+time.sleep(5.0)
 motor.stop_motor()  # 移动出发车区
 vel_msg = {"linear_x": 1.0, "linear_y": 0.0, "angular_z": 0.0}
 motor.cmd_vel_callback(vel_msg)
@@ -53,18 +53,35 @@ vel_msg = {"linear_x": 1.0, "linear_y": 0.0, "angular_z": 0.0}
 motor.cmd_vel_callback(vel_msg)
 time.sleep(5.0)
 motor.stop_motor()
+count = 0 # 计数符
 for i, element in enumerate(identify_list):
+    count += 1
     while True:
         try:
             xyr = cap2.find_material(element)
+            if xyr:
+                print("识别成功，进入抓取放置物料环节")
             break
         except:
             continue
     # 先降步进电机
     motor.control_stepping()  # 还未定义
     # 夹爪夹住物料
-    motor.control_rudder(index=rudder_gripper, angle=90)
+    motor.joint_cmd_callback(msg = {'joint_pos': [0.5, 0.0, 0.0, 0.0, 0.0, 0.0]}) # Example joint positions
     # 升步进电机
     motor.control_stepping()
     # 转底座
-    motor.control_rudder(index=rudder_arm, angle=90)
+    motor.joint_cmd_callback(msg = {'joint_pos': [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]})
+    motor.joint_cmd_callback(msg = {'joint_pos': [0.0, 0.0, i*0.3, 0.0, 0.0, 0.0]})       # 转转盘
+    # 先降步进电机
+    motor.control_stepping()  # 还未定义
+    # 夹爪松开物料
+    motor.joint_cmd_callback(msg = {'joint_pos': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}) # Example joint positions
+    # 升步进电机
+    motor.control_stepping()  # 还未定义
+    # 转回底座
+    motor.joint_cmd_callback(msg = {'joint_pos': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]})
+
+    if count == 3:
+        print("第一批识别完毕，退出识别")
+        break

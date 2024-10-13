@@ -229,8 +229,11 @@ if __name__ == "__main__":
             data.append(data2)
             data3 = temporary-data1*100-data2*10
             data.append(data3)
-            print(data)
+            print(f"data:{data}")
         return data
-    # data = str_int(list=list)
-    # list = get_text(data)
-    show_mission(list)
+    data = str_int(list=list)
+    # 
+    if len(data)>0:
+        
+        show_mission(data)
+        print(f"data:{data}")
