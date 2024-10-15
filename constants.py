@@ -9,4 +9,6 @@ color_config = {
 }
 port_1 = "/dev/ttyACM0"
 baudrate_1=230400
+port_2 = "/dev/ttyS0"
+baudrate_2=115200
 # print(color_config[1])

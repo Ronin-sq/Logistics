@@ -165,16 +165,165 @@ class Motor:
         msg = {'linear_x': 0.0, 'linear_y': 0.0, 'angular_z': 0.0}
         self.cmd_vel_callback(msg=msg)
         print("电机停止")
+        
+        
+class StepMotor:
+    # 对照表
+    '''
+        S_VER = 0      # 读取固件版本和对应的硬件版本
+        S_RL = 1       # 读取读取相电阻和相电感
+        S_PID = 2      # 读取PID参数
+        S_VBUS = 3     # 读取总线电压
+        S_CPHA = 5     # 读取相电流
+        S_ENCL = 7     # 读取经过线性化校准后的编码器值
+        S_TPOS = 8     # 读取电机目标位置角度
+        S_VEL = 9      # 读取电机实时转速
+        S_CPOS = 10    # 读取电机实时位置角度
+        S_PERR = 11    # 读取电机位置误差角度
+        S_FLAG = 13    # 读取使能/到位/堵转状态标志位
+        S_Conf = 14    # 读取驱动参数
+        S_State = 15   # 读取系统状态参数
+        S_ORG = 16     # 读取正在回零/回零失败状态标志位
+    '''
+    def __init__(self,uart):
+        self.uart = uart
+        
+    def Emm_V5_Read_Sys_Params(self,addr, s): # 读取驱动板参数
+        i = 0
+        cmd = bytearray(16)
+        cmd[i] = addr
+        i += 1 
+        func_codes = {
+            'S_VER': 0x1F,
+            'S_RL': 0x20,
+            'S_PID': 0x21,
+            'S_VBUS': 0x24,
+            'S_CPHA': 0x27,
+            'S_ENCL': 0x31,
+            'S_TPOS': 0x33,
+            'S_VEL': 0x35,
+            'S_CPOS': 0x36,
+            'S_PERR': 0x37,
+            'S_FLAG': 0x3A,
+            'S_ORG': 0x3B,
+            'S_Conf': 0x42,     # 读取驱动参数，功能码后面还需要加上一个辅助码0x6C
+            'S_State': 0x43     # 读取系统状态参数，功能码后面还需要加上一个辅助码0x7A
+        }
+        if s in func_codes:
+            cmd[i] = func_codes[s]
+            i += 1
+        cmd[i] = 0x6B
+        i += 1
+        self.uart.write(cmd[:i])
+        
+        
+    def Emm_V5_Reset_CurPos_To_Zero(self, addr): # 将当前位置清零
+        cmd = bytearray(4)
+        cmd[0] =  addr                          # 地址
+        cmd[1] =  0x0A                          # 功能码
+        cmd[2] =  0x6D                          # 辅助码
+        cmd[3] =  0x6B                          # 校验字节
+        self.uart.write(cmd)
+        
+        
+    def Emm_V5_Modify_Ctrl_Mode(self, addr, svF, ctrl_mode): # 调用函数修改控制模式
+        cmd = bytearray(6)
+        cmd[0] = addr          # 地址
+        cmd[1] = 0x46          # 功能码
+        cmd[2] = 0x69          # 辅助码
+        cmd[3] = 0x01 if svF else 0x00  # 是否存储标志, 1为存储, 0为不存储
+        cmd[4] = ctrl_mode     # 控制模式
+        cmd[5] = 0x6B          # 校验字节
+        self.uart.write(cmd)      
+        
+    def Emm_V5_En_Control(self, addr, state, snF): # 为地址电机使能，并启用多机同步
+        cmd = bytearray(16)
+        cmd[0] = addr               # 地址
+        cmd[1] = 0xF3               # 功能码
+        cmd[2] = 0xAB               # 辅助码
+        cmd[3] = 0x01 if state else 0x00  # 使能状态，true为0x01，false为0x00
+        cmd[4] = 0x01 if snF else 0x00    # 多机同步运动标志，true为0x01，false为0x00
+        cmd[5] = 0x6B               # 校验字节
+        self.uart.write(cmd[:6])
+        
+    def Emm_V5_Vel_Control(self, addr, dir, vel, acc, snF): # 地址电机，设置方向为CW，速度为1000RPM，加速度为50，无多机同步
+        cmd = bytearray(16)
+        cmd[0] = addr                  # 地址
+        cmd[1] = 0xF6                  # 功能码
+        cmd[2] = dir                   # 方向，0为CW，其余值为CCW
+        cmd[3] = (vel >> 8) & 0xFF     # 速度(RPM)高8位字节
+        cmd[4] = vel & 0xFF            # 速度(RPM)低8位字节
+        cmd[5] = acc                   # 加速度，注意：0是直接启动
+        cmd[6] = 0x01 if snF else 0x00 # 多机同步运动标志，true为0x01，false为0x00
+        cmd[7] = 0x6B                  # 校验字节
+        self.uart.write(cmd[:8])
+        
+        
+        
+    def Emm_V5_Pos_Control(self, addr, dir, vel, acc, clk, raF, snF): # 地址电机，设置方向为CW，速度为1000RPM，加速度为50，脉冲数为2000，相对运动，无多机同步
+        cmd = bytearray(16)
+        cmd[0] = addr                      # 地址
+        cmd[1] = 0xFD                      # 功能码
+        cmd[2] = dir                       # 方向, 01 表示旋转方向为 CCW（00 表示 CW）
+        cmd[3] = (vel >> 8) & 0xFF         # 速度(RPM)高8位字节
+        cmd[4] = vel & 0xFF                # 速度(RPM)低8位字节 
+        cmd[5] = acc                       # 加速度，注意：0是直接启动
+        cmd[6] = (clk >> 24) & 0xFF        # 脉冲数高8位字节(bit24 - bit31)
+        cmd[7] = (clk >> 16) & 0xFF        # 脉冲数(bit16 - bit23)
+        cmd[8] = (clk >> 8) & 0xFF         # 脉冲数(bit8  - bit15)
+        cmd[9] = clk & 0xFF                # 脉冲数低8位字节(bit0  - bit7)
+        cmd[10] = 0x01 if raF else 0x00    # 相位/绝对标志，true为0x01，false为0x00
+        cmd[11] = 0x01 if snF else 0x00    # 多机同步运动标志，true为0x01，false为0x00
+        cmd[12] = 0x6B                     # 校验字节
+        self.uart.write(cmd[:13])
+        
+    def Emm_V5_Stop_Now(self, addr, snF): # 地址电机，不启用多机同步，立即停止
+        cmd = bytearray(5)
+        cmd[0] = addr               # 地址
+        cmd[1] = 0xFE               # 功能码
+        cmd[2] = 0x98               # 辅助码
+        cmd[3] = 0x01 if snF else 0x00  # 多机同步运动标志，true为0x01，false为0x00
+        cmd[4] = 0x6B               # 校验字节
+        self.uart.write(cmd)
     
+    def Emm_V5_Receive_Data(self):
+        i = 0
+        rxCmd = bytearray(128)
+        lTime = cTime = time.time()  # 使用time.time()来获取当前时间（以秒为单位）
+        while True:
+            if self.uart.any():
+                if i < 128:
+                    rxCmd[i] = self.uart.read(1)[0]
+                    i += 1
+                    lTime = time.time()  # 更新最后接收数据的时间
+            else:
+                cTime = time.time()  # 获取当前时间
+                # 计算时间差（转换为毫秒）
+                if (cTime - lTime) * 1000 > 100: 
+                    # 将数据转换为十六进制字符串
+                    hex_data = ' '.join(['{:02x}'.format(b) for b in rxCmd[:i]])
+                    hex_data = hex_data.strip('00 ')  # 去掉16进制字符串前后的无效0
+                    if hex_data and hex_data[0] != '0':  # 如果首字符不是0，则在首字符前添加一个0
+                        hex_data = '0' + hex_data
+                    return hex_data, len(hex_data.replace(' ', '')) // 2  # 返回数据和数据长度
+                
+                
+                
 if __name__ == "__main__":
-    ser = serial.Serial("COM8",230400)
-    motor = Motor(ser=ser)
-    msg2 = {'linear_x': 1.0, 'linear_y': 0.0, 'angular_z': 0.5}  # Example data
-    motor.cmd_vel_callback(msg2)
-    motor.recv_callback()
-    print(motor.pos_data_['angular_z'])
-    msg = {'joint_pos': [0, 1.0, 1.0, 0.0, 0.0, 0.0]}  # Example joint positions
-    motor.joint_cmd_callback(msg)
-    time.sleep(5)
-    msg1 = {'linear_x': 0.0, 'linear_y': 0.0, 'angular_z': 0.0}  # Example data
-    motor.cmd_vel_callback(msg1)    
+    # ser = serial.Serial("COM8",115200)
+    # motor = Motor(ser=ser)
+    # msg2 = {'linear_x': 1.0, 'linear_y': 0.0, 'angular_z': 0.5}  # Example data
+    # motor.cmd_vel_callback(msg2)
+    # motor.recv_callback()
+    # print(motor.pos_data_['angular_z'])
+    # msg = {'joint_pos': [0, 1.0, 1.0, 0.0, 0.0, 0.0]}  # Example joint positions
+    # motor.joint_cmd_callback(msg)
+    # time.sleep(5)
+    # msg1 = {'linear_x': 0.0, 'linear_y': 0.0, 'angular_z': 0.0}  # Example data
+    # motor.cmd_vel_callback(msg1) 
+    uart = serial.Serial("COM9",115200)
+    stepmotor = StepMotor(uart=uart)
+    stepmotor.Emm_V5_En_Control(addr=0x01, state=1,snF=0)   # 步进电机使能
+    stepmotor.Emm_V5_Reset_CurPos_To_Zero(addr=0x01)
+    stepmotor.Emm_V5_Pos_Control(addr=0x01, dir=0, vel=500,acc=50,clk=2000,raF=1,snF=0)
+    
