@@ -3,6 +3,7 @@ from constants import pwm_max,pwm_min
 import struct
 import serial
 import math
+import cv2
 # 定义常量
 ACC_RATIO = (2*9.8/32768)
 GYRO_RATIO = ((500*math.pi/180)/32768)
@@ -20,11 +21,11 @@ class PIDController:
     def compute(self, target, current):
         error = target - current
         self.integral += error
-        derivative = error - self.error_previous
+        derivative = error - self.previous_error
 
         output = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
 
-        self.error_previous = error
+        self.previous_error = error
         return output
 
 class Motor:
@@ -256,6 +257,7 @@ class StepMotor:
         cmd[5] = acc                   # 加速度，注意：0是直接启动
         cmd[6] = 0x01 if snF else 0x00 # 多机同步运动标志，true为0x01，false为0x00
         cmd[7] = 0x6B                  # 校验字节
+        print(cmd[:8])
         self.uart.write(cmd[:8])
         
         
@@ -307,11 +309,35 @@ class StepMotor:
                         hex_data = '0' + hex_data
                     return hex_data, len(hex_data.replace(' ', '')) // 2  # 返回数据和数据长度
                 
-                
+def pid_move(cap,motor,front_vel,element):
+    pid_x = PIDController(kp=0.0002, ki=0.0, kd=0.0)
+    pid_y = PIDController(kp=0.0002, ki=0.0, kd=0.0)
+    while True:
+            center = cap.detect_circle(element)
+            cap.cv_imshow()
+            if cv2.waitKey(100)  == ord('q'):
+                motor.stop_motor()
+                break
+            if center:
+                if abs(center[0]-352) <= 10 and abs(center[1]-159) <= 10 :
+                    print(f"x_delt{center[0]-352},y_delt{center[1]-159}")
+                    motor.stop_motor()
+                    break
+                print(f"x_delt{center[0]-352},y_delt{center[1]-159}")
+                out_x = pid_x.compute(center[0], 352)
+                out_y = pid_y.compute(center[1], 159)
+                msg1 = {'linear_x': -out_x, 'linear_y': out_y, 'angular_z': 0.0}  # Example data
+                motor.cmd_vel_callback(msg1)
+            else:
+                msg1 = {'linear_x': front_vel, 'linear_y': 0.0, 'angular_z': 0.0}  # Example data
+                motor.cmd_vel_callback(msg1)
+    time.sleep(2.0)
+    return 1
                 
 if __name__ == "__main__":
-    # ser = serial.Serial("COM8",115200)
-    # motor = Motor(ser=ser)
+    import cv2
+    from identify import VideoCapture
+    
     # msg2 = {'linear_x': 1.0, 'linear_y': 0.0, 'angular_z': 0.5}  # Example data
     # motor.cmd_vel_callback(msg2)
     # motor.recv_callback()
@@ -320,10 +346,51 @@ if __name__ == "__main__":
     # motor.joint_cmd_callback(msg)
     # time.sleep(5)
     # msg1 = {'linear_x': 0.0, 'linear_y': 0.0, 'angular_z': 0.0}  # Example data
-    # motor.cmd_vel_callback(msg1) 
-    uart = serial.Serial("COM9",115200)
-    stepmotor = StepMotor(uart=uart)
-    stepmotor.Emm_V5_En_Control(addr=0x01, state=1,snF=0)   # 步进电机使能
-    stepmotor.Emm_V5_Reset_CurPos_To_Zero(addr=0x01)
-    stepmotor.Emm_V5_Pos_Control(addr=0x01, dir=0, vel=500,acc=50,clk=2000,raF=1,snF=0)
-    
+    # motor.cmd_vel_callback(msg1)
+    ser1 = serial.Serial("/dev/ttyACM0",230400)
+    ser = serial.Serial("/dev/ttyUSB0",115200)
+    motor = Motor(ser=ser1)
+    stepmotor = StepMotor(ser)   # 步进电机初始
+    msg = {'joint_pos': [0, 0.05, 0.00, 0.0, 0.0, -1.0]}  # Example joint positions
+    motor.joint_cmd_callback(msg)
+    stepmotor.Emm_V5_En_Control(addr=0x01, state=1,snF=0)   # 步进电机使能 1down
+    time.sleep(2.0)
+    stepmotor.Emm_V5_Pos_Control(addr=0x01, dir=1, vel=200, acc=200, clk=3000, raF=1, snF=0)
+    time.sleep(2.0)
+    msg = {'joint_pos': [0, 0.05, 0.00, 0.0, 0.0, -0.0]}  # Example joint positions
+    motor.joint_cmd_callback(msg)
+    stepmotor.Emm_V5_Pos_Control(addr=0x01, dir=0, vel=200, acc=100, clk=3000, raF=1, snF=0)
+    time.sleep(1.8)
+    msg = {'joint_pos': [0, -1.0, 0.00, 0.0, 0.0, 0.0]}  # Example joint positions
+    motor.joint_cmd_callback(msg)
+    time.sleep(0.5)
+    stepmotor.Emm_V5_Pos_Control(addr=0x01, dir=1, vel=200, acc=100, clk=1000, raF=1, snF=0)
+    time.sleep(1.8)
+    msg = {'joint_pos': [0, -1.0, 0.00, 0.0, 0.0, -1.0]}  # Example joint positions
+    motor.joint_cmd_callback(msg)
+    stepmotor.Emm_V5_Pos_Control(addr=0x01, dir=0, vel=200, acc=100, clk=1000, raF=1, snF=0)
+    time.sleep(1.8)
+    msg = {'joint_pos': [0, 0.05, 0.00, 0.0, 0.0, 0.0]}
+    motor.joint_cmd_callback(msg)
+    #stepmotor.Emm_V5_Stop_Now(addr=0x01,snF=0)
+    exit()
+    motor = Motor(ser=ser)
+    msg = {'joint_pos': [0, 0.05, 0.02, 0.0, 0.0, 0.0]}  # Example joint positions
+    motor.joint_cmd_callback(msg)
+    exit()
+    cap=VideoCapture(1)
+    #exit()
+    list=[2,3,1]
+    lasted_index = 0
+    for i in range(len(list)):
+        front_vel = 0.1
+        if i == 0:
+            lasted_list = list[i]
+            
+        else:
+            if list[i]-lasted_list<0:
+                front_vel = -0.1
+            else:
+                front_vel = 0.1
+        pid_move(cap,motor,front_vel,list[i])
+    cap.release()

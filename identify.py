@@ -38,30 +38,37 @@ class VideoCapture:
         if 1:
         #try:
             frame = self.get_frame()
+            frame = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+            _,frame = cv2.threshold(frame,0,255,cv2.THRESH_OTSU)
             # qr检测并解码
             codeinfo, points, straight_qrcode = qr_coder.detectAndDecode(frame)
         # 绘制qr的检测结果
             if codeinfo !='' :
-                print(points)
+                print(f"points:{points}")
                 # 打印解码结果
                 print("qrcode :", codeinfo)
                 # self.cv_imshow(frame)
                 return codeinfo
         #except:
             #print("检测二维码失败")
-
+            cv2.imshow("frame",frame)
 
 
     
-    def find_material(self, list):
+    def find_material(self, list,frame):
         # for i,element in enumerate(list):
-            frame = self.get_frame()
+            frame = frame
             src = frame.copy()
             kernel = (5, 5)
             hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)         # 转HSV通道
             res = src.copy()
-            mask = cv2.inRange(hsv, constants.color_config[list][0], constants.color_config[list][1])
-            #与函数，起到将两张黑色区域合并的效果
+            if len(constants.color_config[list])==2:
+                mask = cv2.inRange(hsv,constants.color_config[list][0],constants.color_config[list][1])
+    
+            elif len(constants.color_config[list])==1:
+                mask1 = cv2.inRange(hsv,constants.color_config[list][0][0][0],constants.color_config[list][0][0][1])
+                mask2 = cv2.inRange(hsv,constants.color_config[list][0][1][0],constants.color_config[list][0][1][1])
+                mask = mask1 + mask2
             res = cv2.bitwise_and(src, src, mask=mask)
             h,w = res.shape[:2]
             #滤波函数，滤除噪点：
@@ -73,47 +80,66 @@ class VideoCapture:
             opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
 
 
-
+            
             contours, hierarchy = cv2.findContours(opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             contours=sorted(contours,key = cv2.contourArea, reverse=True)
-            if contours:
-
+            if cv2.contourArea(contours[0]) > 30000:
+                print('area',cv2.contourArea(contours[0]))
                 M = cv2.moments(contours[0])
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
                 # draw the contour and center of the shape on the image
                 cv2.drawContours(frame, [contours[0]], -1, (0, 255, 0), 2)
                 cv2.circle(frame, (cX, cY), 1, (255, 255, 255), -1)
-                print("x",cX,'y',cY)
+                #print("x",cX,'y',cY)
+                return [cX,cY]
                 
 # 增加圆环检测
-    def detect_circle(self,list):
-        img = self.get_frame()
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv,constants.color_config[list][0],constants.color_config[list][1])
-        Gaussian_mask = cv2.GaussianBlur(mask,(3,3),1)
-        cv2.imshow("mask",Gaussian_mask)
-        circles = cv2.HoughCircles(Gaussian_mask,cv2.HOUGH_GRADIENT,1,20,param1=100,param2=30,minRadius=50,maxRadius=500)
-        print(circles)
-        if circles is not None:
-            circles = np.uint16(np.around(circles))
-            max_r = []
-            max_point = []
-            for i in circles[0, :]:
-                if len(max_r) == 0:
-                    max_r.append(i[2])
-                    max_point.append((i[0],i[1]))
-                else:
-                    if i[2]>max_r[0]:
-                        max_r.pop()
-                        max_r.append(i[2])
-                        max_point.pop()
-                        max_point.append((i[0],i[1]))
-        print(f'{max_point}')
-        print(max_r)
-        cv2.circle(img,max_point[0],max_r[0],(0, 0, 0), 5)
-        return max_point
+    def detect_circle(self,element):
+        frame = self.get_frame()
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        if len(constants.color_config[element])==2:
+                mask = cv2.inRange(hsv,constants.color_config[element][0],constants.color_config[element][1])
+    
+        elif len(constants.color_config[element])==1:
+                mask1 = cv2.inRange(hsv,constants.color_config[element][0][0][0],constants.color_config[element][0][0][1])
+                mask2 = cv2.inRange(hsv,constants.color_config[element][0][1][0],constants.color_config[element][0][1][1])
+                mask = mask1 + mask2
+        src = frame.copy()
+        kernel = (9, 9)
+        # 与函数，起到将两张黑色区域合并的效果
+        res = cv2.bitwise_and(src, src, mask=mask)
+        h, w = res.shape[:2]
+        # 滤波函数，滤除噪点：
+        blured = cv2.blur(res, (5, 5))
+        ret, bright = cv2.threshold(blured, 10, 255, cv2.THRESH_BINARY)
+        gray = cv2.cvtColor(bright, cv2.COLOR_BGR2GRAY)
 
+        # 开闭运算函数，滤除噪点，使得集合区域更加平滑
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel)
+        closed = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
+
+        gaussian = cv2.GaussianBlur(closed, (5, 5), 0)
+
+        Canny = cv2.Canny(gaussian, 50, 150)
+        contours, hierarchy = cv2.findContours(Canny, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        contours=[i for i in contours if cv2.contourArea(i) >10000]
+        R = max(h, w)
+        if contours:
+            for contour in contours:
+                # 使用最小包围圆算法
+                (x, y), radius = cv2.minEnclosingCircle(contour)
+
+                # 将圆心和半径转换为整数
+                center = (int(x), int(y))
+                radius = int(radius)
+                print(f' area {cv2.contourArea(contour)}')
+                cv2.circle(self.frame,center,radius,(0,0,234),5)
+                
+                print(f"center{center}, radius{radius}")
+                return center
+        else:
+            return None
 
 
 
@@ -191,20 +217,20 @@ def str_int(list):
     
     
 if __name__ == "__main__":
-    # show_mission([1,2,3])
-    # video = VideoCapture(0)
-    # while True:
+    #show_mission([1,2,3])
+    #video = VideoCapture(0)
+    #while True:
 
-    #     list = video.QR_code()
-    #     video.cv_imshow()
+    #    list = video.QR_code()
+     #   video.cv_imshow()
 
     #     #video.cv_imshow()
-    #     if cv2.waitKey(1) & 0xFF == ord('q'):
-    #         break
+      #  if cv2.waitKey(1) & 0xFF == ord('q'):
+       #     break
 
 
-    # video.release()
-    # cap = cv2.VideoCapture(0)
+    #video.release()
+    #cap = cv2.VideoCapture(0)
     # #cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     # if not cap.isOpened():
     #     print("无法打开摄像头")
@@ -239,5 +265,5 @@ if __name__ == "__main__":
     # 
     if len(data)>0:
         
-        show_mission(data)
+#        show_mission(data)
         print(f"data:{data}")
